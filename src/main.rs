@@ -11,13 +11,8 @@ const BRIEF : &'static str = "Usage [OPTION]... [FILE]...";
 struct Settings {
     display_help : bool,
     display_version : bool,
-    number_only_nonblank : bool,
-    show_newlines : bool,
-    number_lines : bool,
-    squeeze_blanks : bool,
-    show_tabs : bool,
-    show_nonprinting : bool,
     file_list : Vec<String>,
+    cat_settings : cat::Settings,
 }
 
 fn print_usage(opts : Options) {
@@ -41,54 +36,56 @@ fn process_arguments(opts : &Options) -> Settings {
     let mut result = Settings {
         display_help : matches.opt_present("help"),
         display_version : matches.opt_present("version"),
-        number_only_nonblank : false,
-        show_newlines : false,
-        number_lines : false,
-        squeeze_blanks : false,
-        show_tabs : false,
-        show_nonprinting : false,
+        cat_settings : cat::Settings {
+            number_only_nonblank : false,
+            show_newlines : false,
+            number_lines : false,
+            squeeze_blanks : false,
+            show_tabs : false,
+            show_nonprinting : false,
+        },
         file_list : vec![String::from("-")],
     };
 
     if matches.opt_present("A") {
-        result.show_nonprinting = true;
-        result.show_newlines = true;
-        result.show_tabs = true;
+        result.cat_settings.show_nonprinting = true;
+        result.cat_settings.show_newlines = true;
+        result.cat_settings.show_tabs = true;
     }
 
     if matches.opt_present("b") {
-        result.number_lines = true;
-        result.number_only_nonblank = true;
+        result.cat_settings.number_lines = true;
+        result.cat_settings.number_only_nonblank = true;
     }
 
     if matches.opt_present("e") {
-        result.show_nonprinting = true;
-        result.show_newlines = true;
+        result.cat_settings.show_nonprinting = true;
+        result.cat_settings.show_newlines = true;
     }
 
     if matches.opt_present("E") {
-        result.show_newlines = true;
+        result.cat_settings.show_newlines = true;
     }
 
     if matches.opt_present("n") {
-        result.number_lines = true;
+        result.cat_settings.number_lines = true;
     }
 
     if matches.opt_present("s") {
-        result.squeeze_blanks = true;
+        result.cat_settings.squeeze_blanks = true;
     }
 
     if matches.opt_present("t") {
-        result.show_nonprinting = true;
-        result.show_tabs = true;
+        result.cat_settings.show_nonprinting = true;
+        result.cat_settings.show_tabs = true;
     }
 
     if matches.opt_present("T") {
-        result.show_tabs = true;
+        result.cat_settings.show_tabs = true;
     }
 
     if matches.opt_present("v") {
-        result.show_nonprinting = true;
+        result.cat_settings.show_nonprinting = true;
     }
 
     if matches.free.len() > 0 {
@@ -120,8 +117,7 @@ fn main() {
     } else if settings.display_version {
         print_version();
     } else {
-        let cat = cat::BasicCat::new();
-        use cat::Cat;
+        let mut cat = cat::Cat::new(settings.cat_settings);
         cat.cat_files(settings.file_list);
     }
 }
@@ -136,7 +132,7 @@ fn cat(settings : Settings) {
     let mut line_count :usize = 0;
     let mut last_line_blank = false;
     let mut buffer : [u8; 512] = [0;512];
-    let scan_chars = settings.show_nonprinting || settings.show_tabs;
+    let scan_chars = settings.cat_settings.show_nonprinting || settings.cat_settings.show_tabs;
     let mut bytes_read : usize;
     //main file loop
     'next_file: for file_name in settings.file_list {
@@ -165,7 +161,7 @@ fn cat(settings : Settings) {
                 continue;
             }
 
-            if (settings.number_lines && !settings.number_only_nonblank)
+            if (settings.cat_settings.number_lines && !settings.number_only_nonblank)
             || (settings.number_only_nonblank && line.len() > 0) {
                 line_count += 1;
                 print!("    {}\t", line_count);
@@ -176,7 +172,7 @@ fn cat(settings : Settings) {
                     const TAB_U8 : u8 = '\t' as u8;
                     match character as u8 {
                         TAB_U8 => {
-                            if settings.show_tabs {
+                            if settings.cat_settings.show_tabs {
                                 print!("^I");
                             } else {
                                 print!("\t");
@@ -193,7 +189,7 @@ fn cat(settings : Settings) {
                 print!("{}", line);
             }
 
-            if settings.show_newlines {
+            if settings.cat_settings.show_newlines {
                 println!("$");
             } else {
                 println!("");

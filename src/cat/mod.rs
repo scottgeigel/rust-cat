@@ -1,12 +1,37 @@
-// pub mod basic_cat;
-// pub use self::basic_cat::*;
+use self::basic_cat::BasicCat;
+use self::numbered_cat::NumberedCat;
+
+mod basic_cat;
+mod numbered_cat;
+
 use std::io::Read;
 
+pub struct Settings {
+    pub number_only_nonblank : bool,
+    pub number_lines : bool,
+    pub show_newlines : bool,
+    pub squeeze_blanks : bool,
+    pub show_tabs : bool,
+    pub show_nonprinting : bool,
+}
 
-pub trait Cat {
-    fn process_buffer(&self, input_buffer : &[u8]);
+pub struct Cat {
+    test : Box<CatMethod>,
+}
 
-    fn cat_files(&self, file_list : Vec<String>) {
+impl Cat {
+    pub fn new(settings : Settings) -> Cat {
+        Cat {
+            test : {
+                if settings.number_lines {
+                    Box::new(NumberedCat::new())
+                } else {
+                    Box::new(BasicCat::new())
+                }
+            }
+        }
+    }
+    pub fn cat_files(&mut self, file_list : Vec<String>) {
         use std::io;
         use std::fs::File;
 
@@ -30,25 +55,12 @@ pub trait Cat {
                     break;
                 }
 
-                self.process_buffer(&buffer);
+                self.test.process_buffer(&buffer[0..bytes_read]);
             }
         }
     }
 }
 
-pub struct BasicCat {
-}
-
-impl BasicCat {
-    pub fn new() -> BasicCat {
-        BasicCat {
-        }
-    }
-
-}
-
-impl Cat for BasicCat {
-    fn process_buffer(&self, input_buffer : &[u8]) {
-        println!("Hello World");
-    }
+trait CatMethod {
+    fn process_buffer(&mut self, input_buffer : &[u8]);
 }
