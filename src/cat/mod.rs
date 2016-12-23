@@ -1,36 +1,122 @@
 use self::basic_cat::BasicCat;
-use self::numbered_cat::NumberedCat;
+use self::line_cat::LineCat;
 
 mod basic_cat;
-mod numbered_cat;
+mod line_cat;
 
 use std::io::Read;
 
 pub struct Settings {
+    //line numbering flags
     pub number_only_nonblank : bool,
     pub number_lines : bool,
-    pub show_newlines : bool,
+    //newline action flags
     pub squeeze_blanks : bool,
+    pub show_newlines : bool,
+    //nonprintable flags
     pub show_tabs : bool,
     pub show_nonprinting : bool,
 }
 
+struct Filter {
+    filter : Box<CatFilter>
+}
+
+struct NoFilter {
+}
+
+impl CatFilter for NoFilter {
+    fn filter_output(&self, input : &[u8]) {
+        use std::io;
+        use std::io::Write;
+        io::stdout().write(input).unwrap();
+    }
+}
+
+struct TestFilter {
+    show_tabs : bool,
+    show_newlines : bool,
+    show_other : bool,
+}
+
+impl CatFilter for TestFilter {
+    fn filter_output(&self, input : &[u8]) {
+        use std::io;
+        use std::io::Write;
+
+        for i in 0..input.len() {
+            let byte = input[i];
+            if byte == b'\t'{
+                if self.show_tabs {
+                    io::stdout().write(b"^I");
+                } else {
+                    io::stdout().write(b"\t");
+                }
+            } else if byte == b'\n' {
+                if self.show_newlines {
+                    io::stdout().write(b"$\n");
+                } else {
+                    io::stdout().write(b"\n");
+                }
+            } else {
+                match byte {
+                    0...8 | 10...31 => {
+                        io::stdout().write(&[b'^', byte + 64]);
+                    },
+                    32...126 => {
+                        io::stdout().write(&[byte]);
+                    },
+                    127 => {
+                        io::stdout().write(b"^?");
+                    },
+                    128...159 => {
+                        io::stdout().write(&[b'M', b'-', b'^', byte - 64]);
+                    },
+                    160...254 => {
+                        io::stdout().write(&[b'M', b'-', byte - 128]);
+                    },
+                    _ => {
+                        io::stdout().write(b"M-^?");
+                    },
+                }
+            }
+        }
+    }
+}
+
+impl Filter {
+    fn new() -> Filter {
+        Filter {
+            filter : Box::new(NoFilter{})
+        }
+    }
+}
+
 pub struct Cat {
     test : Box<CatMethod>,
+    filter : Box<CatFilter>,
 }
 
 impl Cat {
     pub fn new(settings : Settings) -> Cat {
         Cat {
             test : {
-                if settings.number_lines {
-                    Box::new(NumberedCat::new())
+                if settings.number_lines || settings.squeeze_blanks {
+                    Box::new(LineCat::new(!settings.number_only_nonblank, settings.squeeze_blanks))
                 } else {
                     Box::new(BasicCat::new())
+                }
+            },
+            filter : {
+                if settings.show_tabs || settings.show_newlines || settings.show_nonprinting {
+                    Box::new(TestFilter{show_tabs : settings.show_tabs, show_newlines : settings.show_newlines, show_other : settings.show_nonprinting})
+                } else {
+                    Box::new(NoFilter{})
                 }
             }
         }
     }
+
     pub fn cat_files(&mut self, file_list : Vec<String>) {
         use std::io;
         use std::fs::File;
@@ -55,12 +141,20 @@ impl Cat {
                     break;
                 }
 
-                self.test.process_buffer(&buffer[0..bytes_read]);
+                self.test.process_buffer(&buffer[0..bytes_read], &self.filter);
             }
         }
     }
+
+    fn filter_output(&self, line : &[u8]) {
+        self.filter.filter_output(line);
+    }
+}
+
+trait CatFilter {
+    fn filter_output(&self, input : &[u8]);
 }
 
 trait CatMethod {
-    fn process_buffer(&mut self, input_buffer : &[u8]);
+    fn process_buffer(&mut self, input_buffer : &[u8], cat : &Box<CatFilter>);
 }

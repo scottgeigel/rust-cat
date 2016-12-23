@@ -119,11 +119,12 @@ fn main() {
     } else {
         let mut cat = cat::Cat::new(settings.cat_settings);
         cat.cat_files(settings.file_list);
+        // cat_files(settings);
     }
 }
 
-/*
-fn cat(settings : Settings) {
+
+fn cat_files(settings : Settings) {
     use std::fs::File;
     use std::io;
     use std::io::BufReader;
@@ -136,12 +137,12 @@ fn cat(settings : Settings) {
     let mut bytes_read : usize;
     //main file loop
     'next_file: for file_name in settings.file_list {
-        let mut input : Box<Read> = {
+        let mut input : Box<BufRead> = {
             if file_name == "-" {
-                Box::new(std::io::stdin())
+                Box::new(BufReader::new(std::io::stdin()))
             }
             else if let Ok(file) = File::open(&file_name) {
-                Box::new(file)
+                Box::new(BufReader::new(file))
             } else {
                 println!("{}: {}: No such file or directory", PROGRAM_NAME, file_name);
                 //if there was no file of that name, continue on to the next item in the list
@@ -149,29 +150,24 @@ fn cat(settings : Settings) {
             }
         };
 
-        while let Ok(bytes_read) = input.read(&mut buffer) {
-            if bytes_read == 0usize {
-                break;
-            }
-
-            let line : Vec<u8> = buffer.to_vec();
+        'next_line: for line in input.split(b'\n') {
+            let line = line.unwrap();
 
             //pre-print rules
             if last_line_blank && line.len() > 0 {
                 continue;
             }
 
-            if (settings.cat_settings.number_lines && !settings.number_only_nonblank)
-            || (settings.number_only_nonblank && line.len() > 0) {
+            if (settings.cat_settings.number_lines && !settings.cat_settings.number_only_nonblank)
+            || (settings.cat_settings.number_only_nonblank && line.len() > 0) {
                 line_count += 1;
                 print!("    {}\t", line_count);
             }
             //print rules
             if scan_chars {
-                for character in line.chars() {
-                    const TAB_U8 : u8 = '\t' as u8;
+                for &character in &line {
                     match character as u8 {
-                        TAB_U8 => {
+                        b'\t' => {
                             if settings.cat_settings.show_tabs {
                                 print!("^I");
                             } else {
@@ -186,7 +182,8 @@ fn cat(settings : Settings) {
                     }
                 }
             } else {
-                print!("{}", line);
+                use std::io::Write;
+                io::stdout().write(line.as_slice());
             }
 
             if settings.cat_settings.show_newlines {
@@ -199,4 +196,3 @@ fn cat(settings : Settings) {
         }
     }
 }
-*/
