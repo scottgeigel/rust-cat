@@ -9,6 +9,7 @@ pub struct LineCat {
     in_line : bool,
     last_line_blank : bool,
     line_number : usize,
+    line_size : usize,
 }
 
 impl LineCat {
@@ -19,6 +20,7 @@ impl LineCat {
             in_line : false,
             last_line_blank : false,
             line_number : 1,
+            line_size : 0,
         }
     }
 }
@@ -35,19 +37,20 @@ impl CatMethod for LineCat {
             }
             if input_buffer[end] == b'\n' {
                 end += 1;
+                //if wer printed leftovers from last time, be sure to not count the line as blank
+                let is_blank : bool = self.line_size == 0;
 
-                let is_blank : bool = (end - start) == 1;
-
-                if (self.number_blanks || !is_blank) && !(self.squeeze_blanks && is_blank)  {
+                if (self.number_blanks || !is_blank) && !(self.squeeze_blanks && is_blank && self.last_line_blank)  {
                     self.in_line = false;
                     self.line_number += 1;
                     cat.filter_output(&input_buffer[start..end]);
                 }
-
                 start = end;
+                self.line_size = 0;
                 self.last_line_blank = is_blank;
             } else {
                 end += 1;
+                self.line_size += 1;
             }
         }
         //clear out the leftovers in the buffer
