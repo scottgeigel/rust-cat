@@ -18,10 +18,6 @@ pub struct Settings {
     pub show_nonprinting : bool,
 }
 
-struct Filter {
-    filter : Box<CatFilter>
-}
-
 struct NoFilter {
 }
 
@@ -48,46 +44,40 @@ impl CatFilter for TestFilter {
             let byte = input[i];
             if byte == b'\t'{
                 if self.show_tabs {
-                    io::stdout().write(b"^I");
+                    io::stdout().write(b"^I").unwrap();
                 } else {
-                    io::stdout().write(b"\t");
+                    io::stdout().write(b"\t").unwrap();
                 }
             } else if byte == b'\n' {
                 if self.show_newlines {
-                    io::stdout().write(b"$\n");
+                    io::stdout().write(b"$\n").unwrap();
                 } else {
-                    io::stdout().write(b"\n");
+                    io::stdout().write(b"\n").unwrap();
                 }
-            } else {
+            } else if self.show_other {
                 match byte {
                     0...8 | 10...31 => {
-                        io::stdout().write(&[b'^', byte + 64]);
+                        io::stdout().write(&[b'^', byte + 64]).unwrap();
                     },
                     32...126 => {
-                        io::stdout().write(&[byte]);
+                        io::stdout().write(&[byte]).unwrap();
                     },
                     127 => {
-                        io::stdout().write(b"^?");
+                        io::stdout().write(b"^?").unwrap();
                     },
                     128...159 => {
-                        io::stdout().write(&[b'M', b'-', b'^', byte - 64]);
+                        io::stdout().write(&[b'M', b'-', b'^', byte - 64]).unwrap();
                     },
                     160...254 => {
-                        io::stdout().write(&[b'M', b'-', byte - 128]);
+                        io::stdout().write(&[b'M', b'-', byte - 128]).unwrap();
                     },
                     _ => {
-                        io::stdout().write(b"M-^?");
+                        io::stdout().write(b"M-^?").unwrap();
                     },
                 }
+            } else {
+                io::stdout().write(&[byte]).unwrap();
             }
-        }
-    }
-}
-
-impl Filter {
-    fn new() -> Filter {
-        Filter {
-            filter : Box::new(NoFilter{})
         }
     }
 }
@@ -144,10 +134,6 @@ impl Cat {
                 self.test.process_buffer(&buffer[0..bytes_read], &self.filter);
             }
         }
-    }
-
-    fn filter_output(&self, line : &[u8]) {
-        self.filter.filter_output(line);
     }
 }
 

@@ -1,6 +1,5 @@
 use super::CatMethod;
 use super::CatFilter;
-use super::Cat;
 
 pub struct LineCat {
     //configuration variables
@@ -28,9 +27,6 @@ impl LineCat {
 
 impl CatMethod for LineCat {
     fn process_buffer(&mut self, input_buffer : &[u8], cat : &Box<CatFilter>) {
-        use std::io::Write;
-        use std::io;
-
         self.line_buffer.extend_from_slice(input_buffer);
         while self.char_pos < self.line_buffer.len() {
             if self.line_buffer[self.char_pos] == b'\n' {
