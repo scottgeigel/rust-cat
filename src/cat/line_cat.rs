@@ -6,6 +6,7 @@ pub struct LineCat {
     number_blanks : bool,
     squeeze_blanks : bool,
     //state variables
+    in_line : bool,
     last_line_blank : bool,
     line_buffer : Vec<u8>,
     line_number : usize,
@@ -16,10 +17,11 @@ impl LineCat {
     pub fn new(number_blanks : bool, squeeze_blanks : bool) -> LineCat {
         LineCat {
             number_blanks : number_blanks,
-            last_line_blank : false,
             squeeze_blanks : squeeze_blanks,
+            in_line : false,
+            last_line_blank : false,
             line_buffer : Vec::new(),
-            line_number : 0,
+            line_number : 1,
             char_pos : 0,
         }
     }
@@ -29,15 +31,19 @@ impl CatMethod for LineCat {
     fn process_buffer(&mut self, input_buffer : &[u8], cat : &Box<CatFilter>) {
         self.line_buffer.extend_from_slice(input_buffer);
         while self.char_pos < self.line_buffer.len() {
+            if !self.in_line {
+                print!("     {}\t", self.line_number);
+                self.in_line = true;
+            }
             if self.line_buffer[self.char_pos] == b'\n' {
                 self.char_pos += 1;
 
                 let is_blank : bool = self.char_pos == 1;
 
                 if (self.number_blanks || !is_blank) && !(self.squeeze_blanks && is_blank)  {
+                    self.in_line = false;
                     self.line_number += 1;
                     let (line, _) = self.line_buffer.split_at(self.char_pos);
-                    print!("    {}\t", self.line_number);
                     cat.filter_output(line);
                 }
 
@@ -48,5 +54,8 @@ impl CatMethod for LineCat {
                 self.char_pos += 1;
             }
         }
+        //clear out the leftovers in the buffer
+        cat.filter_output(self.line_buffer.as_slice());
+        self.line_buffer.clear();
     }
 }
