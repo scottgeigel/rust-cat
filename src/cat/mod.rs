@@ -109,29 +109,36 @@ impl Cat {
 
     pub fn cat_files(&mut self, file_list : Vec<String>) {
         use std::io;
+        use std::io::BufRead;
+        use std::io::BufReader;
         use std::fs::File;
 
-        let mut buffer : [u8;512] = [0;512];
+        let mut buffer : [u8;2048] = [0;2048];
 
         'next_file: for file_name in file_list {
-            let mut input : Box<Read> = {
+            let mut input : Box<BufRead> = {
                 if file_name == "-" {
-                    Box::new(io::stdin())
+                    Box::new(BufReader::new(io::stdin()))
                 }
                 else if let Ok(file) = File::open(&file_name) {
-                    Box::new(file)
+                    Box::new(BufReader::new(file))
                 } else {
                     println!("{}: {}: No such file or directory", super::PROGRAM_NAME, file_name);
                     //if there was no file of that name, continue on to the next item in the list
                     continue 'next_file;
                 }
             };
-            while let Ok(bytes_read) = input.read(&mut buffer) {
-                if bytes_read == 0usize {
-                    break;
-                }
+            loop {
+                let bytes_read = {
+                    let buffer = input.fill_buf().unwrap();
+                    if buffer.len() == 0usize {
+                        break;
+                    }
+                    self.test.process_buffer(buffer, &self.filter);
+                    buffer.len()
+                };
 
-                self.test.process_buffer(&buffer[0..bytes_read], &self.filter);
+                input.consume(bytes_read);
             }
         }
     }
