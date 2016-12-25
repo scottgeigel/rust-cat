@@ -92,7 +92,7 @@ impl Cat {
         Cat {
             test : {
                 if settings.number_lines || settings.squeeze_blanks {
-                    Box::new(LineCat::new(!settings.number_only_nonblank, settings.squeeze_blanks))
+                    Box::new(LineCat::new(settings.number_lines, !settings.number_only_nonblank, settings.squeeze_blanks))
                 } else {
                     Box::new(BasicCat::new())
                 }
