@@ -1,8 +1,11 @@
 use self::basic_cat::BasicCat;
 use self::line_cat::LineCat;
+use self::filters::NoFilter;
+use self::filters::TestFilter;
 
 mod basic_cat;
 mod line_cat;
+mod filters;
 
 use std::io::Read;
 
@@ -16,70 +19,6 @@ pub struct Settings {
     //nonprintable flags
     pub show_tabs : bool,
     pub show_nonprinting : bool,
-}
-
-struct NoFilter {
-}
-
-impl CatFilter for NoFilter {
-    fn filter_output(&self, input : &[u8]) {
-        use std::io;
-        use std::io::Write;
-        io::stdout().write(input).unwrap();
-    }
-}
-
-struct TestFilter {
-    show_tabs : bool,
-    show_newlines : bool,
-    show_other : bool,
-}
-
-impl CatFilter for TestFilter {
-    fn filter_output(&self, input : &[u8]) {
-        use std::io;
-        use std::io::Write;
-
-        for i in 0..input.len() {
-            let byte = input[i];
-            if byte == b'\t'{
-                if self.show_tabs {
-                    io::stdout().write(b"^I").unwrap();
-                } else {
-                    io::stdout().write(b"\t").unwrap();
-                }
-            } else if byte == b'\n' {
-                if self.show_newlines {
-                    io::stdout().write(b"$\n").unwrap();
-                } else {
-                    io::stdout().write(b"\n").unwrap();
-                }
-            } else if self.show_other {
-                match byte {
-                    0...8 | 10...31 => {
-                        io::stdout().write(&[b'^', byte + 64]).unwrap();
-                    },
-                    32...126 => {
-                        io::stdout().write(&[byte]).unwrap();
-                    },
-                    127 => {
-                        io::stdout().write(b"^?").unwrap();
-                    },
-                    128...159 => {
-                        io::stdout().write(&[b'M', b'-', b'^', byte - 64]).unwrap();
-                    },
-                    160...254 => {
-                        io::stdout().write(&[b'M', b'-', byte - 128]).unwrap();
-                    },
-                    _ => {
-                        io::stdout().write(b"M-^?").unwrap();
-                    },
-                }
-            } else {
-                io::stdout().write(&[byte]).unwrap();
-            }
-        }
-    }
 }
 
 pub struct Cat {
