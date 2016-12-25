@@ -1,13 +1,11 @@
 use self::basic_cat::BasicCat;
 use self::line_cat::LineCat;
 use self::filters::NoFilter;
-use self::filters::TestFilter;
+use self::filters::NonPrintFilter;
 
 mod basic_cat;
 mod line_cat;
 mod filters;
-
-use std::io::Read;
 
 pub struct Settings {
     //line numbering flags
@@ -38,7 +36,7 @@ impl Cat {
             },
             filter : {
                 if settings.show_tabs || settings.show_newlines || settings.show_nonprinting {
-                    Box::new(TestFilter{show_tabs : settings.show_tabs, show_newlines : settings.show_newlines, show_other : settings.show_nonprinting})
+                    Box::new(NonPrintFilter{show_tabs : settings.show_tabs, show_newlines : settings.show_newlines, show_other : settings.show_nonprinting})
                 } else {
                     Box::new(NoFilter{})
                 }
@@ -51,8 +49,6 @@ impl Cat {
         use std::io::BufRead;
         use std::io::BufReader;
         use std::fs::File;
-
-        let mut buffer : [u8;2048] = [0;2048];
 
         'next_file: for file_name in file_list {
             let mut input : Box<BufRead> = {

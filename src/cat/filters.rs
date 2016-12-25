@@ -1,5 +1,4 @@
 use super::CatFilter;
-use super::Settings;
 
 pub struct NoFilter {
 }
@@ -12,13 +11,13 @@ impl CatFilter for NoFilter {
     }
 }
 
-pub struct TestFilter {
+pub struct NonPrintFilter {
     pub show_tabs : bool,
     pub show_newlines : bool,
     pub show_other : bool,
 }
 
-impl CatFilter for TestFilter {
+impl CatFilter for NonPrintFilter {
     fn filter_output(&self, input : &[u8]) {
         use std::io;
         use std::io::Write;
